@@ -1,0 +1,32 @@
+appId: io.github.cko-workbench
+productName: cKO 工作台
+copyright: Copyright © 2026 cKO Workbench contributors
+directories:
+  output: dist
+  buildResources: build
+files:
+  - package.json
+  - src/**/*
+  - "!**/*.map"
+asar: true
+compression: normal
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: "cKO工作台-安装程序-${version}.${ext}"
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: cKO 工作台
+  installerLanguages:
+    - zh_CN
+  language: 2052
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true
+  warningsAsErrors: false

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>样例台账（测试夹具，数据为虚构）</title></head>
+<body>
+<p>这是一个用于回归测试的样例台账。数据完全是虚构的，位点为通用占位。</p>
+<script>
+const LOCI = [
+  { id: 'target_flox', name: '目标基因-Flox', model: 'biallelic', color: '#f0883e', aliases: ['flox', 'floxed', 'fl', 'f'],
+    alleles: { none: 'DD', single: 'FF', double: 'FD' },
+    labels: { none: '无带', single: '1 条带', double: '2 条带' },
+    order: ['double', 'single', 'none'], short: 'Flox', note: '' },
+  { id: 'target_ko', name: '目标基因-KO', model: 'biallelic', color: '#db6dc4', aliases: ['ko', 'knockout', '敲除'],
+    alleles: { pos: 'KK', neg: 'WW' },
+    labels: { pos: '有带', neg: '无带' },
+    order: ['pos', 'neg'], short: 'KO', note: '' },
+  { id: 'cre', name: 'Cre 驱动系', model: 'transgenic', color: '#3fb950', aliases: ['cre', 'cre-driver'],
+    alleles: { double: 'PN', single: 'NN', none: 'XX' },
+    labels: { double: '2 条带', single: '1 条带', none: '无带' },
+    order: ['double', 'single', 'none'], short: 'Cre', note: '' }
+];
+const TARGETS = [
+  { id: 'cko', name: 'cKO 目标鼠', color: '#3fb950',
+    rules: [{ locus: 'target_ko', call: 'pos' },
+            { locus: 'cre', call: 'double' },
+            { locus: 'target_flox', call: 'none' }],
+    note: '' }
+];
+const LEDGER_DATA = {
+  meta: { project: 'DEMO-001', strain: 'Demo strain' },
+  rats: [
+    { id: 1, tag: '001', sex: 'F', birth: '2026-01-01', status: 'alive', gt: { target_flox: { call: 'none', bands: 0 }, target_ko: { call: 'pos', bands: 1 }, cre: { call: 'double', bands: 2 } } },
+    { id: 2, tag: '002', sex: 'M', birth: '2026-01-01', status: 'alive', gt: { target_flox: { call: 'single', bands: 1 }, target_ko: { call: 'pos', bands: 1 }, cre: { call: 'single', bands: 1 } } },
+    { id: 3, tag: '003', sex: 'M', birth: '2025-11-01', status: 'alive', gt: { cre: { call: 'single', bands: 1 } } },
+    { id: 4, tag: '004', sex: 'F', birth: '2025-11-01', status: 'alive', gt: { cre: { call: 'double', bands: 2 } } },
+    { id: 5, tag: '005', sex: 'F', birth: '2026-01-01', status: 'alive', sire: 3, dam: 4, gt: { target_flox: { call: 'none', bands: 0 }, target_ko: { call: 'pos', bands: 1 }, cre: { call: 'double', bands: 2 } } }
+  ],
+  sessions: [
+    { id: 1, seq: 1, date: '2026-01-10', note: '', lanes: [
+      { idx: 1, tag: '001', sex: 'F', gts: [ { locus: 'target_flox', call: 'none' }, { locus: 'target_ko', call: 'pos' }, { locus: 'cre', call: 'double' } ] },
+      { idx: 2, tag: '002', sex: 'M', gts: [ { locus: 'target_flox', call: 'single' }, { locus: 'target_ko', call: 'pos' }, { locus: 'cre', call: 'single' } ] }
+    ] }
+  ],
+  nextRatId: 6, nextSessionId: 2
+};
+</script>
+</body>
+</html>

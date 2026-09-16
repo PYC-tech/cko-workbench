@@ -1,0 +1,19 @@
+{
+  "name": "cko-workbench",
+  "version": "1.0.0",
+  "description": "cKO 个人工作台 · 条件性敲除鼠管理桌面程序",
+  "main": "src/main/index.js",
+  "author": "carzy-stupid-medstudent",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "electron": "44.4.1",
+    "electron-builder": "26.15.3"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dist:dir": "electron-builder --dir",
+    "dist": "electron-builder",
+    "test": "node tests/run-all.js"
+  }
+}

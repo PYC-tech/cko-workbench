@@ -60,7 +60,13 @@ cKO 工作台针对这两点做了硬约束：
 1. 打开本仓库的 **Releases** 页面（GitHub 仓库右侧栏，或地址栏后加 `/releases`）；
 2. 下载最新版的 `cKO工作台-安装程序-x.y.z.exe`（Windows 64 位）；
 3. 双击安装（可自选安装目录，会自动创建桌面与开始菜单快捷方式）；
-4. 打开即用——首次启动会自动在安装目录同级创建一个数据文件夹并建好示例项目，无需任何选择或确认。
+4. 打开即用——首次启动会自动在安装目录同级创建一个数据文件夹，并载入一份**内置示例数据**（虚构），无需任何选择或确认。
+
+> 示例数据长什么样：30 只鼠、10 个笼位、4 个鉴定批次、F0→F1→F2 三代家系（含一例耳标脱落改号与一例复检改判），用来直接体验「谱系」与「笼位」两个视图。全部虚构，随时可删。
+>
+> 数据目录里已有项目时不会重复载入；想手动再载一份，去「设置 → 内置示例数据 → 载入示例项目」。
+>
+> 自己写示例数据：改 `build/make-demo-seed.js` 里的家系表，跑 `node build/make-demo-seed.js` 重新生成 `src/renderer/seed/demo.js`（生成前会跑家系断言，父母悬空或耳号重号会直接报错）。
 
 > 想换数据位置：进「设置 → 更改数据目录」。
 >
@@ -205,7 +211,8 @@ cko-workbench/
 ├─ electron-builder.yml        # 打包配置（NSIS 安装包）
 ├─ build/
 │  ├─ icon.ico                 # 应用图标
-│  └─ make-icon.js             # 图标生成脚本
+│  ├─ make-icon.js             # 图标生成脚本
+│  └─ make-demo-seed.js        # 内置示例数据生成器（虚构家系表 → seed/demo.js）
 ├─ src/
 │  ├─ main/
 │  │  ├─ index.js              # 窗口 / 生命周期 / 自定义协议
@@ -217,6 +224,8 @@ cko-workbench/
 │     ├─ index.html            # 页面壳 + 脚本加载顺序
 │     ├─ main.js               # 启动器、导航、项目切换
 │     ├─ views.js              # 全部界面渲染
+│     ├─ seed/
+│     │  └─ demo.js            # 内置示例数据（由 build/make-demo-seed.js 生成）
 │     ├─ core/
 │     │  ├─ genetics.js        # 遗传学引擎
 │     │  ├─ model.js           # 数据模型工厂 + 校验断言
@@ -290,3 +299,11 @@ npm test                      # 上面 + Electron 端到端冒烟
 MIT License。你可以自由使用、修改、分发。
 
 > 本程序不提供任何医疗或实验决策建议，基因型判读与配种策略请以实验室实际 SOP 为准。
+
+---
+
+## 作者
+
+**carzy-stupid-medstudent**
+
+由 PYC-tech 协助发布：<https://github.com/PYC-tech/cko-workbench>

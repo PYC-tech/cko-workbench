@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' cko:; img-src 'self' cko: data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' cko:;" />
+  <title>cKO 工作台</title>
+  <link rel="stylesheet" href="styles/ledger.css" />
+</head>
+<body>
+  <div id="bootSplash" class="boot-splash">
+    <div class="boot-splash-box">
+      <div class="brand-logo">cKO</div>
+      <div class="boot-splash-text">正在准备工作台…</div>
+    </div>
+  </div>
+  <div id="app">
+    <aside id="sidebar">
+      <div class="brand">
+        <div class="brand-logo">cKO</div>
+        <div class="brand-sub">个人工作台</div>
+      </div>
+      <nav id="nav"></nav>
+      <div class="side-foot" id="projSwitch"></div>
+    </aside>
+    <main id="main">
+      <header id="topbar">
+        <h1 id="viewTitle">总览</h1>
+        <div class="top-actions" id="projSwitchTop"></div>
+      </header>
+      <section id="content"></section>
+    </main>
+  </div>
+
+  <!-- 依赖顺序：core 工具 → 业务 → 视图 → 启动 -->
+  <script src="core/genetics.js"></script>
+  <script src="core/model.js"></script>
+  <script src="core/store.js"></script>
+  <script src="core/templates.js"></script>
+  <script src="seed/demo.js"></script>
+  <script src="core/migrate.js"></script>
+  <script src="core/parse.js"></script>
+  <script src="core/app.js"></script>
+  <script src="core/ui.js"></script>
+  <script src="views.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
