@@ -856,15 +856,75 @@
       root.appendChild(seedPanel);
     }
 
-    // 位点档案（全局，只显示活动位点）
+    // 本项目的鉴定指标（改名后立即影响鼠只表头、鉴定表与口述提示词）
+    if (proj) {
+      const projLoci = proj.loci.filter(l => !l.archived).map(l => Object.assign({}, l));
+      const pPanel = el('div', { class: 'panel' }, [
+        el('h3', { text: '本项目的鉴定指标' }),
+        el('p', { class: 'muted', text: '改这里的名字，鼠只档案的表头、鉴定表与「口述录入」的提示词卡片会同步跟着变。只改名不动内部 id，已录入的结果一条不丢。' })
+      ]);
+      const pBox = el('div', { class: 'locus-edit-list' });
+      function renderProjRows() {
+        U.clear(pBox);
+        projLoci.forEach((l, i) => {
+          const used = (App.state.rats || []).filter(r => r.gt && r.gt[l.id] != null).length;
+          pBox.appendChild(el('div', { class: 'locus-edit-row' }, [
+            el('span', { class: 'muted', style: 'width:18px', text: String(i + 1) }),
+            el('input', { class: 'inp', value: l.name, title: '指标名称', oninput: (e) => { l.name = e.target.value; } }),
+            el('input', { class: 'inp', style: 'max-width:110px', value: l.short || '', title: '简称', oninput: (e) => { l.short = e.target.value; } }),
+            el('input', { class: 'inp', style: 'max-width:210px', value: (l.aliases || []).join(', '), title: '别名，逗号分隔（会写进口述提示词里）', oninput: (e) => { l.aliases = e.target.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); } }),
+            used ? el('span', { class: 'muted', style: 'width:74px;text-align:right', text: used + ' 只已测' }) : el('span', { style: 'width:74px' }),
+            el('button', { class: 'btn btn-sm btn-ghost', text: '×', title: used ? '已有 ' + used + ' 只鼠的数据，不能删除' : '删除该指标', onclick: () => {
+              if (used) return U.toast('该指标已有鉴定数据，不能删除', 'warn');
+              projLoci.splice(i, 1); renderProjRows();
+            } })
+          ]));
+        });
+        pBox.appendChild(el('button', { class: 'btn btn-sm', text: '+ 加一个指标', onclick: () => { projLoci.push(CKO.templates.blankLocus(projLoci.length + 1)); renderProjRows(); } }));
+      }
+      renderProjRows();
+      pPanel.appendChild(pBox);
+      pPanel.appendChild(el('div', { class: 'btn-row' }, [
+        el('button', { class: 'btn btn-primary', text: '保存本项目指标', onclick: async () => {
+          try { await App.updateProjectLoci(projLoci); U.toast('指标已更新，表头与提示词同步', 'ok'); CKO.refresh(); }
+          catch (e) { U.toast('保存失败：' + (e.message || e), 'err'); }
+        } })
+      ]));
+      root.appendChild(pPanel);
+    }
+
+    // 位点档案（全局，决定「新建项目」时默认带出哪几个指标）
     const arc = App.state.archive;
     if (arc) {
-      const arcPanel = el('div', { class: 'panel' }, [el('h3', { text: '位点档案（全局）' })]);
-      arc.loci.filter(l => !l.archived).forEach(l => arcPanel.appendChild(el('div', { class: 'locus-row' }, [
-        el('b', { text: l.name }), el('span', { class: 'muted', text: ' · ' + l.model + ' · v' + l.version }),
-        el('span', { text: ' · 取值：' + l.order.map(c => l.labels[c] || c).join('/') }),
-        l.defaultValue != null && l.defaultValue !== '' ? el('span', { class: 'tag tag-default', text: '默认 ' + (l.labels[l.defaultValue] || l.defaultValue) }) : el('span')
-      ])));
+      const arcPanel = el('div', { class: 'panel' }, [
+        el('h3', { text: '位点档案（全局）' }),
+        el('p', { class: 'muted', text: '这里决定「新建项目」时默认带出哪几个指标。改它不影响已经建好的项目——那些项目持有自己的副本。' })
+      ]);
+      const arcLoci = arc.loci.filter(l => !l.archived).map(l => Object.assign({}, l));
+      const arcBox = el('div', { class: 'locus-edit-list' });
+      function renderArcRows() {
+        U.clear(arcBox);
+        arcLoci.forEach((l, i) => arcBox.appendChild(el('div', { class: 'locus-edit-row' }, [
+          el('span', { class: 'muted', style: 'width:18px', text: String(i + 1) }),
+          el('input', { class: 'inp', value: l.name, title: '指标名称', oninput: (e) => { l.name = e.target.value; } }),
+          el('input', { class: 'inp', style: 'max-width:110px', value: l.short || '', title: '简称', oninput: (e) => { l.short = e.target.value; } }),
+          el('input', { class: 'inp', style: 'max-width:210px', value: (l.aliases || []).join(', '), title: '别名，逗号分隔', oninput: (e) => { l.aliases = e.target.value.split(/[,，]/).map(s => s.trim()).filter(Boolean); } }),
+          el('button', { class: 'btn btn-sm btn-ghost', text: '×', title: '删除', onclick: () => { arcLoci.splice(i, 1); renderArcRows(); } })
+        ])));
+        arcBox.appendChild(el('button', { class: 'btn btn-sm', text: '+ 加一个指标', onclick: () => { arcLoci.push(CKO.templates.blankLocus(arcLoci.length + 1)); renderArcRows(); } }));
+      }
+      renderArcRows();
+      arcPanel.appendChild(arcBox);
+      arcPanel.appendChild(el('div', { class: 'btn-row' }, [
+        el('button', { class: 'btn btn-primary', text: '保存位点档案', onclick: async () => {
+          try { await App.saveArchiveLoci(arcLoci); U.toast('位点档案已更新（影响以后新建的项目）', 'ok'); CKO.refresh(); }
+          catch (e) { U.toast('保存失败：' + (e.message || e), 'err'); }
+        } }),
+        el('button', { class: 'btn', text: '重置为通用模板', onclick: async () => {
+          try { await App.saveArchiveLoci(CKO.templates.seedArchive().loci); U.toast('已重置为通用指标（目标基因-Flox / 目标基因-KO / Cre 驱动系）', 'ok'); CKO.refresh(); }
+          catch (e) { U.toast('重置失败：' + (e.message || e), 'err'); }
+        } })
+      ]));
       root.appendChild(arcPanel);
     }
 

@@ -27,7 +27,8 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Build installer (NSIS)
-        run: npm run dist
+        # --publish never：CI 里禁止 electron-builder 自动发布（否则会因缺少 GH_TOKEN 报错）
+        run: npm run dist -- --publish never
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

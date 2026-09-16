@@ -116,6 +116,37 @@
       return proj;
     },
 
+    // 改本项目的指标名 / 简称 / 别名。
+    // 安全边界：locus.id 不可变（鼠只的 gt 以 id 为键），所以这里只改显示层的名字，
+    // 已录入的基因型一条不动；已被鼠只引用的位点禁止删除，否则基因型会变孤儿。
+    async updateProjectLoci(loci) {
+      const proj = this.state.project;
+      if (!proj) throw M.mk('E_BAD_ARG', '没有打开的项目');
+      const keep = new Set(loci.map(l => l.id));
+      for (const old of (proj.loci || [])) {
+        if (keep.has(old.id) || old.archived) continue;
+        const used = (this.state.rats || []).filter(r => r.gt && r.gt[old.id] != null).length;
+        if (used) throw M.mk('E_BAD_ARG', `位点「${old.name}」已有 ${used} 只鼠的鉴定数据，不能删除；暂时不用请留着或改名。`);
+      }
+      const archived = (proj.loci || []).filter(l => l.archived);
+      proj.loci = loci.map(l => M.makeLocus(l)).concat(archived);
+      proj.updatedAt = new Date().toISOString();
+      M.validateProject(proj);
+      await Store.saveProject(proj);
+      return proj;
+    },
+
+    // 改全局位点档案：只影响**以后新建**的项目，已建成的项目持有自己的副本，不受牵连。
+    async saveArchiveLoci(loci) {
+      const arc = this.state.archive || T.seedArchive();
+      const archived = (arc.loci || []).filter(l => l.archived);
+      arc.loci = loci.map(l => M.makeLocus(l)).concat(archived);
+      arc.updatedAt = new Date().toISOString();
+      this.state.archive = arc;
+      await Store.saveArchive(arc);
+      return arc;
+    },
+
     async loadProject(id) {
       const proj = await Store.loadProject(id);
       if (!proj) throw M.mk('E_NOT_FOUND', '项目不存在：' + id);
@@ -231,6 +262,8 @@
       const defaults = proj.loci.filter(l => !l.archived && l.defaultValue != null && l.defaultValue !== '').map(l =>
         `- ${l.name}：未提及时默认「${l.defaultValue}」= ${l.labels[l.defaultValue] || l.defaultValue}`
       ).join('\n');
+      // 示例里一律用「当前项目第一个指标的名字」，不写死，改名后提示词里就不会残留旧名字
+      const exName = (proj.loci.filter(l => !l.archived)[0] || {}).name || '位点名';
       return `你是实验数据录入助手。请把我下面口述的鉴定结果整理成【固定格式】的行式文本。
 你只做格式整理，禁止任何推断、补全、换算或"合理猜测"。
 
@@ -250,10 +283,10 @@ ${required}
 末尾可加：@备注 我额外说的任何话（原样保留）
 
 ═══ 四、取值前缀（关键，不许混用） ═══
-- 不加前缀   我逐只明确念到的取值        例：目标基因-Flox=double
-- 加 ~ 前缀  我在"整批统一陈述"里说的    例：目标基因-Flox=~single
+- 不加前缀   我逐只明确念到的取值        例：${exName}=double
+- 加 ~ 前缀  我在"整批统一陈述"里说的    例：${exName}=~single
              （如"这批鼠所有的 KO 都是阳性的"这类一句话覆盖多只的表述）
-- 写 ?       我在任何地方都没提到该位点  例：目标基因-Flox=?
+- 写 ?       我在任何地方都没提到该位点  例：${exName}=?
 ★ 严禁把 ? 写成阴性/无带，严禁用上一只鼠的取值补下一只，严禁根据常识推断。
 
 ═══ 五、我可能会单独给你批次级信息（没有就忽略） ═══

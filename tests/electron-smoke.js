@@ -114,6 +114,29 @@ app.whenReady().then(async () => {
     console.log('DEMO_SEED:', JSON.stringify(ds));
   } catch (e) { console.log('DEMO_SEED_ERR:', e.message); }
 
+  // 验证「改本项目指标名 → 口述提示词卡片同步跟着变」，以及有数据的位点删不掉
+  try {
+    const rc = await win.webContents.executeJavaScript('(async function(){' +
+      'var A=window.CKO.App, p=A.state.project; if(!p) return {err:"no project"};' +
+      'var before=A.buildPromptCard(p);' +
+      'var loci=p.loci.filter(function(l){return !l.archived}).map(function(l){return Object.assign({},l)});' +
+      'var oldName=loci[0].name;' +
+      'loci[0].name="ABC 基因-Flox"; loci[0].aliases=["abcflox"];' +
+      'await A.updateProjectLoci(loci);' +
+      'var after=A.buildPromptCard(A.state.project);' +
+      'var out={oldName:oldName, beforeHasOld:before.indexOf(oldName)>=0,' +
+      'afterHasNew:after.indexOf("ABC 基因-Flox")>=0, afterHasNewAlias:after.indexOf("abcflox")>=0,' +
+      'afterLostOld:after.indexOf(oldName)<0,' +
+      'headerInRats:false};' +
+      'var root=document.getElementById("content");' +
+      'CKO.views.rats(root);' +
+      'out.headerInRats=root.textContent.indexOf("ABC 基因-Flox")>=0;' +
+      'try{ await A.updateProjectLoci([]); out.deleteBlocked=false; }catch(e){ out.deleteBlocked=true; out.guardMsg=e.message; }' +
+      'return out;' +
+    '})()');
+    console.log('RENAME_LOCI:', JSON.stringify(rc));
+  } catch (e) { console.log('RENAME_LOCI_ERR:', e.message); }
+
   // 用样例台账迁移结果建项目，验证谱系/笼位/表格视图渲染不报错
   try {
     const fixtureHtml = require('fs').readFileSync(path.join(__dirname, 'fixtures', 'ledger-sample.html'), 'utf8');
