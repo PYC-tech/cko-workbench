@@ -273,6 +273,7 @@
   function computeGenerations() {
     const gen = {};
     App.state.rats.forEach(r => gen[r.id] = 0);
+    let converged = false;
     for (let it = 0; it < 40; it++) {
       let ch = false;
       App.state.rats.forEach(r => {
@@ -281,7 +282,13 @@
         if (r.dam != null && gen[r.dam] !== undefined) g = Math.max(g, gen[r.dam] + 1);
         if (g > gen[r.id]) { gen[r.id] = g; ch = true; }
       });
-      if (!ch) break;
+      if (!ch) { converged = true; break; }
+    }
+    // 跑满 40 轮仍在变 → 谱系有环。以前是静默丢边，现在标记出来提示用户。
+    if (!converged) {
+      gen.__cycle = true;
+      const cyc = App.state.rats.filter(r => (r.sire != null || r.dam != null) && (gen[r.id] || 0) >= 39).map(r => r.tag);
+      gen.__cycleTags = cyc;
     }
     return gen;
   }
@@ -417,6 +424,7 @@
       node.onclick = () => { pedRootId = n.id; renderPedView(root); };
       inner.appendChild(node);
     });
+    if (gen.__cycle) side.appendChild(el('div', { class: 'ped-cycle-warn', text: '⚠ 谱系里检测到环（' + (gen.__cycleTags || []).join('、') + '），世代无法定序。请检查这些鼠的父/母是否互相指向。' }));
     renderCageList(side);
   }
   function renderCageList(box) {
@@ -716,16 +724,30 @@
   // 确认表（粘贴框解析后）
   function showDictationConfirm(holder, draft, proj) {
     U.clear(holder);
+    // 容错层做了什么，要说清楚（只认写法变体，不改语义）
+    if (draft.notes && draft.notes.length) {
+      const t = {}; draft.notes.forEach(n => t[n] = (t[n] || 0) + 1);
+      holder.appendChild(el('div', { class: 'norm-box', text: '已自动归一化 ' + draft.notes.length + ' 处：' + Object.keys(t).map(k => k + '×' + t[k]).join('、') }));
+    }
+    if (draft.fatal && draft.fatal.length) holder.appendChild(el('div', { class: 'err-box', text: '✖ ' + draft.fatal.join('；') }));
     if (draft.warnings && draft.warnings.length) holder.appendChild(el('div', { class: 'warn-box', text: '⚠ ' + draft.warnings.join('；') }));
-    if (draft.lanes.some(l => l.errors && l.errors.length)) {
+    if (draft.lanes.some(l => (l.errors && l.errors.length) || (l.warnings && l.warnings.length))) {
       const ew = el('div', { class: 'err-box' });
-      draft.lanes.filter(l => l.errors && l.errors.length).forEach(l => ew.appendChild(el('div', { text: `行 ${l.laneNo}（${l.tag}）：${l.errors.join('；')}` })));
+      draft.lanes.filter(l => (l.errors && l.errors.length) || (l.warnings && l.warnings.length)).forEach(l => {
+        if (l.errors && l.errors.length) ew.appendChild(el('div', { text: `行 ${l.laneNo}（${l.tag}）：${l.errors.join('；')}` }));
+        if (l.warnings && l.warnings.length) ew.appendChild(el('div', { class: 'lane-warn', text: `行 ${l.laneNo}（${l.tag}）提醒：${l.warnings.join('；')}` }));
+      });
       holder.appendChild(ew);
     }
     const loci = proj.loci.filter(l => !l.archived);
+    const tagOfId = id => { const r = App.state.rats.find(x => x.id === id); return r ? r.tag : null; };
     // 确认表
     const table = el('table', { class: 'grid confirm-grid' });
-    const thead = el('tr', {}, [el('th', { text: '耳号' }), el('th', { text: '性别' }), ...loci.map(l => el('th', { text: l.name })), el('th', { text: '状态' })]);
+    const thead = el('tr', {}, [
+      el('th', { text: '耳号' }), el('th', { text: '性别' }),
+      ...loci.map(l => el('th', { text: l.name })),
+      el('th', { text: '笼位' }), el('th', { text: '父' }), el('th', { text: '母' }), el('th', { text: '状态' })
+    ]);
     table.appendChild(el('thead', {}, thead));
     const tb = el('tbody', {});
     draft.lanes.forEach(lane => {
@@ -740,9 +762,27 @@
         } else tds.push(el('td', { text: '—' }));
       });
       const existing = App.state.rats.find(r => r.tag === lane.tag);
-      const status = lane.errors && lane.errors.length ? el('span', { class: 'badge badge-err', text: '错误' })
+      // 笼位：明确声明 → 变色；未提及 → keep（**刻意不加虚线**，与位点缺失区分开）
+      if (lane.cage) {
+        if (lane.cage.clear) tds.push(el('td', { class: 'cell cell-stated' }, [el('span', { text: '清空' }), el('span', { class: 'cell-src', text: '明确' })]));
+        else tds.push(el('td', { class: 'cell cell-' + (lane.cage.src === 'batch-stated' ? 'batch' : 'stated') }, [el('span', { text: lane.cage.value }), el('span', { class: 'cell-src', text: srcTag(lane.cage.src) })]));
+      } else {
+        tds.push(el('td', { class: 'cell cell-keep', text: '不改动' + (existing && existing.cage ? '（现 ' + existing.cage + '）' : '') }));
+      }
+      // 父 / 母
+      [['sire', '父'], ['dam', '母']].forEach(([k]) => {
+        const v = lane[k];
+        if (!v) {
+          const cur = existing && existing[k] != null ? tagOfId(existing[k]) : null;
+          tds.push(el('td', { class: 'cell cell-keep', text: '不改动' + (cur ? '（现 ' + cur + '）' : '') }));
+          return;
+        }
+        if (v.clear) tds.push(el('td', { class: 'cell cell-stated' }, [el('span', { text: '清空' }), el('span', { class: 'cell-src', text: '明确' })]));
+        else tds.push(el('td', { class: 'cell cell-stated' }, [el('span', { text: v.tag }), el('span', { class: 'cell-src', text: '明确' })]));
+      });
+      const status = (lane.errors && lane.errors.length) ? el('span', { class: 'badge badge-err', text: '错误' })
         : existing ? el('span', { class: 'badge badge-upd', text: '更新' }) : el('span', { class: 'badge badge-new', text: '新鼠' });
-      tds.push(el('td', {}, [status]));
+      tds.push(el('td', {}, [status, (lane.warnings && lane.warnings.length) ? el('span', { class: 'badge badge-warn', text: '提醒' }) : el('span')]));
       tb.appendChild(el('tr', {}, tds));
     });
     table.appendChild(tb); holder.appendChild(table);
@@ -762,15 +802,58 @@
     box.appendChild(el('h4', { text: '变更预览（落库前核对）' }));
     box.appendChild(el('div', { class: 'dryrun-stat', text: `解析：${plan.rows.length} 道 · 新增鼠 ${plan.stats.newRats} · 更新鼠 ${plan.stats.updateRats}` }));
     box.appendChild(el('div', { class: 'dryrun-stat', text: `明确 ${plan.stats.stated} · 批次推得 ${plan.stats.batchStated} · 默认 ${plan.stats.defaulted} · 未提及 ${plan.stats.omitted}` }));
+    const extra = [];
+    if (plan.stats.newborns) extra.push(`新生建档 ${plan.stats.newborns} 只`);
+    if (plan.stats.cageChanges) extra.push(`笼位变更 ${plan.stats.cageChanges} 只`);
+    if (plan.stats.cageKeep) extra.push(`笼位未提及（不改动）${plan.stats.cageKeep} 只`);
+    if (plan.stats.pedChanges) extra.push(`谱系变更 ${plan.stats.pedChanges} 处`);
+    if ((plan.crosses || []).length) extra.push(`配种事件 ${plan.crosses.length} 组`);
+    if (extra.length) box.appendChild(el('div', { class: 'dryrun-stat', text: extra.join(' · ') }));
+    if (plan.newSession) {
+      box.appendChild(el('div', { class: 'dryrun-stat', text: `将生成鉴定批次 #${plan.newSession.seq}（${plan.newSession.date}，${plan.newSession.lanes.length} 道）` }));
+    } else {
+      box.appendChild(el('div', { class: 'dryrun-stat', text: '本段不含鉴定结果，不会生成新批次（只改笼位/谱系）' }));
+    }
     if (plan.stats.overwrites.length) {
       const ow = el('div', { class: 'dryrun-ow' }, [el('div', { text: '⚠ 将覆盖旧值：' })]);
       plan.stats.overwrites.forEach(o => ow.appendChild(el('div', { text: `  ${o.tag} · ${o.locus}：${o.from} → ${o.to}` })));
       box.appendChild(ow);
     }
+    // 新增区段：笼位 / 谱系 / 新生 / 配种 明细
+    const rowsWithChange = plan.rows.filter(r => !r.error && (r.changesText || []).length);
+    if (rowsWithChange.length) {
+      const ex = el('div', { class: 'plan-extra' });
+      ex.appendChild(el('div', { class: 'plan-extra-h', text: '笼位与谱系改动' }));
+      rowsWithChange.forEach(r => ex.appendChild(el('div', { class: 'plan-extra-row', text: r.tag + '：' + r.changesText.join('；') })));
+      box.appendChild(ex);
+    }
+    if ((plan.newborns || []).length) {
+      const nb = el('div', { class: 'plan-extra' });
+      nb.appendChild(el('div', { class: 'plan-extra-h', text: '新生一窝' }));
+      plan.newborns.forEach(g => nb.appendChild(el('div', { class: 'plan-extra-row', text: `${g.litter || '（无窝号）'} · 出生 ${g.birth} · 父 ${g.sireTag || '未提供'} / 母 ${g.damTag || '未提供'} · 笼 ${g.cage || '未指定'} · ${g.tags.length} 只（${g.tags.join('、')}）` })));
+      box.appendChild(nb);
+    }
+    if ((plan.crosses || []).length) {
+      const cx = el('div', { class: 'plan-extra' });
+      cx.appendChild(el('div', { class: 'plan-extra-h', text: '配种（只记事件，不改父母）' }));
+      plan.crosses.forEach(c => cx.appendChild(el('div', { class: 'plan-extra-row', text: `${c.sire} × ${c.dam}${c.cage ? '（' + c.cage + ' 笼）' : ''}` })));
+      box.appendChild(cx);
+    }
+    if ((plan.errors || []).length || (plan.fatal || []).length) {
+      const eb = el('div', { class: 'err-box' });
+      (plan.fatal || []).forEach(t => eb.appendChild(el('div', { text: '✖ ' + t })));
+      (plan.errors || []).forEach(t => eb.appendChild(el('div', { text: '✖ ' + t })));
+      box.appendChild(eb);
+    }
+    const blockers = (plan.fatal || []).length || (plan.errors || []).length;
     box.appendChild(el('div', { class: 'btn-row' }, [
-      el('button', { class: 'btn btn-primary', text: '确认写入', onclick: async () => {
-        try { const r = await App.commitPlan(plan); U.toast(`已写入 ${r.savedRats} 只鼠 · 批次 #${r.session}`, 'ok'); U.clear(holder); CKO.refresh(); }
-        catch (e) { U.toast('写入失败：' + (e.message || e), 'err'); }
+      el('button', { class: 'btn btn-primary', text: blockers ? '有错误，不能写入' : '确认写入', disabled: blockers ? 'true' : null, onclick: async () => {
+        if (blockers) return U.toast('请先修正上面的错误', 'err');
+        try {
+          const r = await App.commitPlan(plan);
+          U.toast(`已写入 ${r.savedRats} 只鼠` + (r.session ? ` · 批次 #${r.session}` : '（仅笼位/谱系，无新批次）'), 'ok');
+          U.clear(holder); CKO.refresh();
+        } catch (e) { U.toast('写入失败：' + (e.message || e), 'err'); }
       } }),
       el('button', { class: 'btn', text: '取消', onclick: () => U.clear(holder) })
     ]));

@@ -2,6 +2,8 @@
 /**
  * run-all.js — `npm test` 入口。
  * 1) 纯逻辑回归（Node 直接跑，不依赖 Electron）：tests/smoke.js
+ * 1b) 文档回归：docs/口述录入示例.md 里每段演示口述都能解析（tests/verify-demo-dictation.js）
+ * 1c) 口述 v2 容忍写法与安全边界（tests/verify-dictation-v2.js）
  * 2) Electron 端到端冒烟（需依赖真实 Electron 运行时，且必须 unset ELECTRON_RUN_AS_NODE）：tests/electron-smoke.js
  *    若环境无法启动 Electron（如缺少显示/GPU），第二项会被跳过并给出提示，不视为失败。
  */
@@ -19,6 +21,12 @@ let okAll = true;
 
 // 1) 纯逻辑回归
 okAll = run('Node 纯逻辑回归 (tests/smoke.js)', process.execPath, [path.join(__dirname, 'smoke.js')]) && okAll;
+
+// 1b) 文档里的演示口述必须一直能解析（发出去就是给用户照抄的）
+okAll = run('演示口述文档回归 (tests/verify-demo-dictation.js)', process.execPath, [path.join(__dirname, 'verify-demo-dictation.js')]) && okAll;
+
+// 1c) 口述 v2：容忍写法 + 安全边界
+okAll = run('口述 v2 容忍写法与边界 (tests/verify-dictation-v2.js)', process.execPath, [path.join(__dirname, 'verify-dictation-v2.js')]) && okAll;
 
 // 2) Electron 冒烟：必须去掉 ELECTRON_RUN_AS_NODE（否则 electron 二进制退化为普通 node）
 const electronBin = path.join(__dirname, '..', 'node_modules', 'electron', 'dist', 'electron.exe');

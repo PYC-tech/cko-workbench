@@ -126,8 +126,20 @@ textarea.inp { font-family: inherit; }
 .confirm-grid td.cell-stated { background: #15281a; }
 .confirm-grid td.cell-batch { background: #2a2410; }
 .confirm-grid td.cell-default { background: #102433; }
+.confirm-grid td.cell-unknown { background: #2a1a1a; }
+/* 未提及（数据缺失）——灰虚线，表示"该测没测" */
 .confirm-grid td.cell-omitted { background: repeating-linear-gradient(45deg, #1a1f27, #1a1f27 6px, #14181f 6px, #14181f 12px); color: var(--muted); border: 1px dashed var(--line); }
+/* 未提及（不改动）——刻意不加虚线：这是"我这次没说"，与数据缺失不是一回事 */
+.confirm-grid td.cell-keep { background: transparent; color: var(--muted); font-size: 12px; }
+.confirm-grid td.cell-err { background: #3a1414; color: #ff9a92; }
 .cell-src { font-size: 10px; color: var(--muted); margin-left: 4px; }
+.norm-box { background: #0f2433; border: 1px solid #1d4258; color: #7fd0f0; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; }
+.lane-warn { color: #f0c060; margin-top: 2px; }
+.badge-warn { background: #3a2a0a; color: #f0c060; }
+.plan-extra { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; font-size: 12px; }
+.plan-extra-h { color: var(--muted); margin-bottom: 6px; }
+.plan-extra-row { padding: 2px 0; }
+.ped-cycle-warn { background: #3a2a0a; border: 1px solid #5a4410; color: #f0c060; padding: 8px 10px; border-radius: 8px; font-size: 12px; margin-bottom: 10px; }
 .warn-box { background: #3a2a0a; border: 1px solid #5a4410; color: #f0c060; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; }
 .err-box { background: #3a1414; border: 1px solid #5a1a1a; color: #ff9a92; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; font-size: 13px; }
 .dryrun-box { background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-top: 14px; }

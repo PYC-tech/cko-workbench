@@ -64,7 +64,8 @@ function register() {
     return { path: dir };
   }));
   ipcMain.handle('cko:vault:defaultPath', wrap(async () => {
-    // 打包后：默认数据目录 = 安装目录的父级下的「cKO数据」（即 E:\KORAT\cKO数据 这类），
+    // 打包后：默认数据目录 = 安装目录的父级下的「cKO数据」（例如装在
+    // D:\Tools\cko-workbench，数据就落在 D:\Tools\cKO数据），
     // 让装完即用、数据独立于程序目录，又不必再手选文件夹。
     // 开发模式（npm start）下回退到 文档\cKO工作台，避免测试数据污染项目目录。
     if (app.isPackaged) {

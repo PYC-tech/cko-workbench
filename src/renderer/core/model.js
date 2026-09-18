@@ -179,8 +179,55 @@
     }
   }
 
+  // ── 谱系校验（纯函数，供口述预览与写盘前复用）──
+  // 沿 sire/dam 上行看是否回到 startId。get 允许叠加「尚未落盘的改动」。
+  function wouldCycle(byId, startId, sire, dam, get) {
+    const g = get || ((id, k) => (byId[id] ? byId[id][k] : null));
+    const seen = new Set([startId]);
+    const st = [sire, dam].filter(x => x != null);
+    while (st.length) {
+      const id = st.pop();
+      if (id === startId) return true;          // 回到自己 = 环
+      if (seen.has(id)) continue;
+      seen.add(id);
+      if (!byId[id]) continue;
+      const s = g(id, 'sire'), d = g(id, 'dam');
+      if (s != null) st.push(s);
+      if (d != null) st.push(d);
+    }
+    return false;
+  }
+
+  /**
+   * 全项目谱系体检。pending 形如 { ratId: { sire, dam } }，把「本段要改的父母」
+   * 先叠加到工作副本再校验——否则「新生儿与补父母同段互引」测不出来。
+   * 返回 { errors, warnings }：errors 须阻断，warnings 仅提醒。
+   */
+  function checkPedigree(rats, pending) {
+    const byId = {}; (rats || []).forEach(r => { byId[r.id] = r; });
+    const ov = pending || {};
+    const get = (id, k) => (ov[id] && k in ov[id]) ? ov[id][k] : (byId[id] ? byId[id][k] : null);
+    const errors = [], warnings = [];
+    (rats || []).forEach(r => {
+      const s = get(r.id, 'sire'), d = get(r.id, 'dam');
+      if (s != null && s === r.id) errors.push({ id: r.id, tag: r.tag, text: '父不能是它自己' });
+      if (d != null && d === r.id) errors.push({ id: r.id, tag: r.tag, text: '母不能是它自己' });
+      if (s != null && d != null && s === d) errors.push({ id: r.id, tag: r.tag, text: '父与母不能是同一只鼠' });
+      if (s != null && !byId[s]) errors.push({ id: r.id, tag: r.tag, text: '父（' + s + '）在项目里找不到' });
+      if (d != null && !byId[d]) errors.push({ id: r.id, tag: r.tag, text: '母（' + d + '）在项目里找不到' });
+      if (wouldCycle(byId, r.id, s, d, get)) errors.push({ id: r.id, tag: r.tag, text: '谱系成环（沿父母上行又回到自己）' });
+      const sr = s != null ? byId[s] : null, dr = d != null ? byId[d] : null;
+      if (sr && sr.sex === 'F') warnings.push({ id: r.id, tag: r.tag, text: '父 ' + sr.tag + ' 记录为雌性' });
+      if (dr && dr.sex === 'M') warnings.push({ id: r.id, tag: r.tag, text: '母 ' + dr.tag + ' 记录为雄性' });
+      if (sr && sr.sex === 'U') warnings.push({ id: r.id, tag: r.tag, text: '父 ' + sr.tag + ' 性别待定' });
+      if (dr && dr.sex === 'U') warnings.push({ id: r.id, tag: r.tag, text: '母 ' + dr.tag + ' 性别待定' });
+    });
+    return { errors, warnings };
+  }
+
   CKO.model = {
     uid, makeLocus, makeTarget, makeProject, makeRat, makeRatEvent, makeSession, makeWorkLog,
-    validateProject, validateRatsAgainstLoci, targetHits, isTarget, assertMigration, mk
+    validateProject, validateRatsAgainstLoci, targetHits, isTarget, assertMigration, mk,
+    wouldCycle, checkPedigree
   };
 })(window.CKO = window.CKO || {});
